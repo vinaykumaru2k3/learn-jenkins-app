@@ -1,9 +1,10 @@
 pipeline {
     agent any
+
     stages {
         stage('Build') {
-            agent{
-                docker{
+            agent {
+                docker {
                     image 'node:18-alpine'
                     reuseNode true
                 }
@@ -19,17 +20,18 @@ pipeline {
                 '''
             }
             post {
-                success{
+                success {
                     echo 'build stage completed successfully.'
                 }
-                failure{
+                failure {
                     echo 'build stage failed.'
+                }
             }
         }
 
         stage('Test') {
-            agent{
-                docker{
+            agent {
+                docker {
                     image 'node:18-alpine'
                     reuseNode true
                 }
@@ -41,12 +43,13 @@ pipeline {
                 npm run test
                 '''
             }
-            post{
-                success{
+            post {
+                success {
                     echo 'test stage completed successfully.'
                 }
-                failure{
+                failure {
                     echo 'test stage failed.'
+                }
             }
         }
     }
