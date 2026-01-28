@@ -39,7 +39,7 @@ pipeline {
                     }
                     steps {
                         sh '''
-                            npm test
+                            npm test -- --forceExit
                         '''
                     }
                     post {
@@ -59,7 +59,7 @@ pipeline {
                     steps {
                         sh '''
                             npm ci
-                            npx playwright install --with-deps
+                            npx playwright install
                             npm install serve
 
                             node_modules/.bin/serve -s build -l 3000 &
