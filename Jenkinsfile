@@ -1,11 +1,13 @@
 pipeline {
     agent any
+
     environment {
-            NETLIFY_SITE_ID = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
-            NETLIFY_AUTH_TOKEN = credentials('netlify-token')
-        }
+        NETLIFY_SITE_ID = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-token')
+    }
 
     stages {
+
         stage('Build') {
             agent {
                 docker {
@@ -15,22 +17,20 @@ pipeline {
             }
             steps {
                 sh '''
-                    echo 'small change to trigger build'
-                    ls -la
+                    echo 'Building app'
                     node --version
                     npm --version
                     npm ci
                     npm run build
-                    ls -la
+                    ls -la build
                 '''
             }
         }
-        
 
         stage('Tests') {
             parallel {
 
-                stage('Unit Test') {
+                stage('Unit Tests') {
                     agent {
                         docker {
                             image 'node:18-alpine'
@@ -39,6 +39,7 @@ pipeline {
                     }
                     steps {
                         sh '''
+                            npm ci
                             npm test
                         '''
                     }
@@ -49,7 +50,7 @@ pipeline {
                     }
                 }
 
-                stage('E2E') {
+                stage('E2E (Local)') {
                     agent {
                         docker {
                             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
@@ -58,9 +59,9 @@ pipeline {
                     }
                     steps {
                         sh '''
-                            npm install serve
-                            node_modules/.bin/serve -s build &
-                            sleep 10
+                            npm ci
+                            npx playwright install --with-deps
+
                             npx playwright test --reporter=html
                         '''
                     }
@@ -69,18 +70,15 @@ pipeline {
                             publishHTML([
                                 allowMissing: false,
                                 alwaysLinkToLastBuild: false,
-                                icon: '',
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
-                                reportName: 'playwright Local Report',
-                                reportTitles: '',
+                                reportName: 'Playwright Local Report',
                                 useWrapperFileDirectly: true
                             ])
                         }
                     }
                 }
-
             }
         }
 
@@ -95,44 +93,50 @@ pipeline {
                 sh '''
                     npm install netlify-cli
                     node_modules/.bin/netlify --version
-                    echo "Deploying to Netlify site ID: $NETLIFY_SITE_ID"
-                    node_modules/.bin/netlify deploy --dir=build --prod --no-build --site=$NETLIFY_SITE_ID
+
+                    echo "Deploying to Netlify site: $NETLIFY_SITE_ID"
+                    node_modules/.bin/netlify deploy \
+                      --dir=build \
+                      --prod \
+                      --no-build \
+                      --site=$NETLIFY_SITE_ID
                 '''
             }
         }
 
-        stage('Prod E2E') {
-                    agent {
-                        docker {
-                            image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                            reuseNode true
-                        }
-                    }
-
-                    environment{
-                        CI_ENVIRONMENT_URL = 'https://velvety-frangipane-2c6406.netlify.app'
-                    }
-
-                    steps {
-                        sh '''
-                            npx playwright test --reporter=html
-                        '''
-                    }
-                    post {
-                        always {
-                            publishHTML([
-                                allowMissing: false,
-                                alwaysLinkToLastBuild: false,
-                                icon: '',
-                                keepAll: false,
-                                reportDir: 'playwright-report',
-                                reportFiles: 'index.html',
-                                reportName: 'playwright E2E Report',
-                                reportTitles: '',
-                                useWrapperFileDirectly: true
-                            ])
-                        }
-                    }
+        stage('E2E (Production)') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                    reuseNode true
                 }
+            }
+
+            environment {
+                CI_ENVIRONMENT_URL = 'https://velvety-frangipane-2c6406.netlify.app'
+            }
+
+            steps {
+                sh '''
+                    npm ci
+                    npx playwright install --with-deps
+
+                    npx playwright test --reporter=html
+                '''
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: false,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Playwright Prod Report',
+                        useWrapperFileDirectly: true
+                    ])
+                }
+            }
+        }
     }
 }
