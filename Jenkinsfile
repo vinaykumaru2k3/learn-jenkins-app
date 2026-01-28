@@ -39,7 +39,8 @@ pipeline {
                     }
                     steps {
                         sh '''
-                            npm test
+                            npm ci
+                            CI=true npm test -- --watchAll=false
                         '''
                     }
                     post {
