@@ -40,7 +40,7 @@ pipeline {
                 sh '''
                 echo "Running tests..."
                 test -f build/index.html || { echo "Build file not found!"; exit 1; }
-                npm run test
+                npm run test -- --watchAll=false
                 '''
             }
             post {
@@ -66,8 +66,10 @@ pipeline {
             steps {
                 sh '''
                 echo "Running E2E tests..."
+                npm ci
                 npm install -g serve
-                node_modules/.bin/serve -s build
+                serve -s build &
+                sleep 2
                 npx playwright test
                 '''
             }
