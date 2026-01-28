@@ -66,7 +66,6 @@ pipeline {
             steps {
                 sh '''
                 echo "Running E2E tests..."
-                npm install serve
                 npx serve -s build &
                 sleep 2
                 npx playwright test
@@ -76,7 +75,7 @@ pipeline {
     }
     post {
         always {
-            junit 'jest-results/junit.xml'
+            junit 'test-results/junit.xml'
         }
     }
 }
