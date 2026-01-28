@@ -39,7 +39,6 @@ pipeline {
                     }
                     steps {
                         sh '''
-                            npm ci
                             npm test
                         '''
                     }
@@ -61,6 +60,20 @@ pipeline {
                         sh '''
                             npm ci
                             npx playwright install --with-deps
+                            npm install serve
+
+                            node_modules/.bin/serve -s build -l 3000 &
+                            
+                            # wait for server to respond on port 3000 (up to 30s)
+                            i=0
+                            until curl -sS http://localhost:3000 >/dev/null 2>&1 || [ "$i" -ge 30 ]; do
+                              i=$((i+1))
+                              sleep 1
+                            done
+                            if ! curl -sS http://localhost:3000 >/dev/null 2>&1; then
+                              echo "ERROR: server did not start within 30s"
+                              exit 1
+                            fi
 
                             npx playwright test --reporter=html
                         '''
