@@ -9,6 +9,7 @@ pipeline {
     }
 
     stages {
+
         stage('Build') {
             agent {
                 docker {
@@ -28,6 +29,7 @@ pipeline {
 
         stage('Tests') {
             parallel {
+
                 stage('Unit tests') {
                     agent {
                         docker {
@@ -48,7 +50,7 @@ pipeline {
                     }
                 }
 
-                stage('E2E') {
+                stage('Local E2E') {
                     agent {
                         docker {
                             image "${PLAYWRIGHT_IMAGE}"
@@ -60,8 +62,11 @@ pipeline {
                             npm ci
                             npx playwright install
                             npm install serve
-                            node_modules/.bin/serve -s build &
+
+                            node_modules/.bin/serve -s build -l 3000 &
                             sleep 10
+
+                            CI_ENVIRONMENT_URL="http://localhost:3000" \
                             npx playwright test --reporter=html
                         '''
                     }
@@ -94,7 +99,8 @@ pipeline {
                     npm ci
                     npm install netlify-cli
                     node_modules/.bin/netlify --version
-                    echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
+
+                    echo "Deploying to staging..."
                     node_modules/.bin/netlify deploy \
                       --dir=build \
                       --no-build \
@@ -102,13 +108,10 @@ pipeline {
                       --site=$NETLIFY_SITE_ID \
                       --json > deploy-output.json
                 '''
-                script {
-                    def deployUrl = sh(
-                        script: "cat deploy-output.json | grep -o '\"deploy_url\":\"[^\"]*\"' | cut -d'\"' -f4",
-                        returnStdout: true
-                    ).trim()
-                    env.STAGING_URL = deployUrl.startsWith('http') ? deployUrl : "https://${deployUrl}"
-                    echo "Staging URL: ${env.STAGING_URL}"
+            }
+            post {
+                success {
+                    stash includes: 'deploy-output.json', name: 'deployJson'
                 }
             }
         }
@@ -121,18 +124,22 @@ pipeline {
                 }
             }
             steps {
+                unstash 'deployJson'
                 sh '''
                     npm ci
                     npx playwright install
-                    
-                    # Extract and set the staging URL from deploy output
-                    DEPLOY_URL=$(cat deploy-output.json | grep -o '"deploy_url":"[^"]*"' | cut -d'"' -f4)
-                    if [[ ! "$DEPLOY_URL" =~ ^http ]]; then
-                        DEPLOY_URL="https://$DEPLOY_URL"
-                    fi
+
+                    DEPLOY_URL=$(grep -o '"deploy_url":"[^"]*"' deploy-output.json | cut -d'"' -f4)
+
+                    case "$DEPLOY_URL" in
+                      http*) ;;
+                      *) DEPLOY_URL="https://$DEPLOY_URL" ;;
+                    esac
+
                     echo "Testing against: $DEPLOY_URL"
-                    
-                    CI_ENVIRONMENT_URL="$DEPLOY_URL" npx playwright test --reporter=html
+
+                    CI_ENVIRONMENT_URL="$DEPLOY_URL" \
+                    npx playwright test --reporter=html
                 '''
             }
             post {
@@ -153,7 +160,7 @@ pipeline {
         stage('Approval') {
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Do you wish to deploy to production?', ok: 'Yes, I am sure!'
+                    input message: 'Do you wish to deploy to production?', ok: 'Deploy'
                 }
             }
         }
@@ -169,8 +176,8 @@ pipeline {
                 sh '''
                     npm ci
                     npm install netlify-cli
-                    node_modules/.bin/netlify --version
-                    echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
+
+                    echo "Deploying to production..."
                     node_modules/.bin/netlify deploy \
                       --dir=build \
                       --prod \
