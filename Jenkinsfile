@@ -103,10 +103,11 @@ pipeline {
                       --json > deploy-output.json
                 '''
                 script {
-                    env.STAGING_URL = sh(
+                    def deployUrl = sh(
                         script: "cat deploy-output.json | grep -o '\"deploy_url\":\"[^\"]*\"' | cut -d'\"' -f4",
                         returnStdout: true
                     ).trim()
+                    env.STAGING_URL = deployUrl.startsWith('http') ? deployUrl : "https://${deployUrl}"
                     echo "Staging URL: ${env.STAGING_URL}"
                 }
             }
