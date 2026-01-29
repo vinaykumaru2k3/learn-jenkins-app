@@ -94,20 +94,27 @@ pipeline {
             }
             steps {
                 sh '''
-                    npm install netlify-cli
+                    # jq is still required (node-jq is just a wrapper)
+                    apk add --no-cache jq
+
+                    npm install netlify-cli node-jq
+
                     node_modules/.bin/netlify --version
 
                     echo "Deploying to Netlify site: $NETLIFY_SITE_ID"
                     node_modules/.bin/netlify deploy \
-                      --dir=build \
-                      --no-build \
-                      --auth=$NETLIFY_AUTH_TOKEN \
-                      --site=$NETLIFY_SITE_ID \
-                      --json > deploy-output.json
-                    jq -r '.deploy_url' deploy-output.json
+                    --dir=build \
+                    --no-build \
+                    --auth=$NETLIFY_AUTH_TOKEN \
+                    --site=$NETLIFY_SITE_ID \
+                    --json > deploy-output.json
+
+                    # Extract deploy_url using node-jq
+                    npx node-jq '.deploy_url' deploy-output.json
                 '''
             }
         }
+
 
         stage('Approval for production'){
             steps {
