@@ -68,61 +68,72 @@ pipeline {
         }
 
         stage('Deploy staging') {
-            agent {
-                docker {
-                    image "${NODE_IMAGE}"
-                    reuseNode true
+            stages {
+                stage('Deploy') {
+                    agent {
+                        docker {
+                            image "${NODE_IMAGE}"
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        sh '''
+                            npm ci
+                            npm install netlify-cli
+                            node_modules/.bin/netlify --version
+                            echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
+                            node_modules/.bin/netlify deploy \
+                              --dir=build \
+                              --no-build \
+                              --auth=$NETLIFY_AUTH_TOKEN \
+                              --site=$NETLIFY_SITE_ID \
+                              --json > deploy-output.json
+                            echo "Deploy output:"
+                            cat deploy-output.json
+                        '''
+                    }
                 }
-            }
-            steps {
-                sh '''
-                    npm ci
-                    npm install netlify-cli
 
-                    node_modules/.bin/netlify deploy \
-                      --dir=build \
-                      --no-build \
-                      --auth=$NETLIFY_AUTH_TOKEN \
-                      --site=$NETLIFY_SITE_ID \
-                      --json > deploy-output.json
+                stage('E2E') {
+                    agent {
+                        docker {
+                            image "${PLAYWRIGHT_IMAGE}"
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        sh '''
+                            npm ci
+                            npx playwright install
 
-                    echo "Deploy output:"
-                    cat deploy-output.json
-                '''
-            }
-            post {
-                success {
-                    stash includes: 'deploy-output.json', name: 'deployJson'
+                            DEPLOY_URL=$(grep -o '"deploy_url":[[:space:]]*"[^"]*"' deploy-output.json | cut -d'"' -f4)
+
+                            if [ -z "$DEPLOY_URL" ]; then
+                              echo "ERROR: deploy_url not found"
+                              cat deploy-output.json
+                              exit 1
+                            fi
+
+                            echo "Testing against: $DEPLOY_URL"
+
+                            CI_ENVIRONMENT_URL="$DEPLOY_URL" \
+                            npx playwright test --reporter=html
+                        '''
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: false,
+                                keepAll: false,
+                                reportDir: 'playwright-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Staging E2E',
+                                useWrapperFileDirectly: true
+                            ])
+                        }
+                    }
                 }
-            }
-        }
-
-        stage('Staging E2E') {
-            agent {
-                docker {
-                    image "${PLAYWRIGHT_IMAGE}"
-                    reuseNode true
-                }
-            }
-            steps {
-                unstash 'deployJson'
-                sh '''
-                    npm ci
-                    npx playwright install
-
-                    DEPLOY_URL=$(grep -o '"deploy_url":[[:space:]]*"[^"]*"' deploy-output.json | cut -d'"' -f4)
-
-                    if [ -z "$DEPLOY_URL" ]; then
-                      echo "ERROR: deploy_url not found"
-                      cat deploy-output.json
-                      exit 1
-                    fi
-
-                    echo "Testing against: $DEPLOY_URL"
-
-                    CI_ENVIRONMENT_URL="$DEPLOY_URL" \
-                    npx playwright test --reporter=html
-                '''
             }
         }
 
@@ -135,43 +146,61 @@ pipeline {
         }
 
         stage('Deploy prod') {
-            agent {
-                docker {
-                    image "${NODE_IMAGE}"
-                    reuseNode true
+            stages {
+                stage('Deploy') {
+                    agent {
+                        docker {
+                            image "${NODE_IMAGE}"
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        sh '''
+                            npm ci
+                            npm install netlify-cli
+                            node_modules/.bin/netlify --version
+                            echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
+                            node_modules/.bin/netlify deploy \
+                              --dir=build \
+                              --no-build \
+                              --prod \
+                              --auth=$NETLIFY_AUTH_TOKEN \
+                              --site=$NETLIFY_SITE_ID
+                        '''
+                    }
                 }
-            }
-            steps {
-                sh '''
-                    npm ci
-                    npm install netlify-cli
 
-                    node_modules/.bin/netlify deploy \
-                      --dir=build \
-                      --no-build \
-                      --prod \
-                      --auth=$NETLIFY_AUTH_TOKEN \
-                      --site=$NETLIFY_SITE_ID
-                '''
-            }
-        }
-
-        stage('Prod E2E') {
-            agent {
-                docker {
-                    image "${PLAYWRIGHT_IMAGE}"
-                    reuseNode true
+                stage('E2E') {
+                    agent {
+                        docker {
+                            image "${PLAYWRIGHT_IMAGE}"
+                            reuseNode true
+                        }
+                    }
+                    environment {
+                        CI_ENVIRONMENT_URL = 'https://velvety-frangipane-2c6406.netlify.app'
+                    }
+                    steps {
+                        sh '''
+                            npm ci
+                            npx playwright install
+                            npx playwright test --reporter=html
+                        '''
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: false,
+                                keepAll: false,
+                                reportDir: 'playwright-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Prod E2E',
+                                useWrapperFileDirectly: true
+                            ])
+                        }
+                    }
                 }
-            }
-            environment {
-                CI_ENVIRONMENT_URL = 'https://velvety-frangipane-2c6406.netlify.app'
-            }
-            steps {
-                sh '''
-                    npm ci
-                    npx playwright install
-                    npx playwright test --reporter=html
-                '''
             }
         }
     }
