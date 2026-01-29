@@ -94,7 +94,7 @@ pipeline {
             }
             steps {
                 sh '''
-                    npm install netlify-cli node-jq
+                    npm install netlify-cli
                     node_modules/.bin/netlify --version
 
                     echo "Deploying to Netlify site: $NETLIFY_SITE_ID"
@@ -104,7 +104,7 @@ pipeline {
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID \
                       --json > deploy-output.json
-                    node-jq -r '.deploy_url' deploy-output.json
+                    jq -r '.deploy_url' deploy-output.json
                 '''
             }
         }
