@@ -104,7 +104,7 @@ pipeline {
                 '''
                 script {
                     env.STAGING_URL = sh(
-                        script: "jq -r '.deploy_url' deploy-output.json",
+                        script: "cat deploy-output.json | grep -o '\"deploy_url\":\"[^\"]*\"' | cut -d'\"' -f4",
                         returnStdout: true
                     ).trim()
                     echo "Staging URL: ${env.STAGING_URL}"
