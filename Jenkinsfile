@@ -120,14 +120,19 @@ pipeline {
                     reuseNode true
                 }
             }
-            environment {
-                CI_ENVIRONMENT_URL = "${env.STAGING_URL}"
-            }
             steps {
                 sh '''
                     npm ci
                     npx playwright install
-                    npx playwright test --reporter=html
+                    
+                    # Extract and set the staging URL from deploy output
+                    DEPLOY_URL=$(cat deploy-output.json | grep -o '"deploy_url":"[^"]*"' | cut -d'"' -f4)
+                    if [[ ! "$DEPLOY_URL" =~ ^http ]]; then
+                        DEPLOY_URL="https://$DEPLOY_URL"
+                    fi
+                    echo "Testing against: $DEPLOY_URL"
+                    
+                    CI_ENVIRONMENT_URL="$DEPLOY_URL" npx playwright test --reporter=html
                 '''
             }
             post {
