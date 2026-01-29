@@ -19,8 +19,6 @@ pipeline {
             }
             steps {
                 sh '''
-                    node --version
-                    npm --version
                     npm ci
                     npm run build
                 '''
@@ -42,11 +40,6 @@ pipeline {
                             npm ci
                             CI=true npm test -- --watchAll=false
                         '''
-                    }
-                    post {
-                        always {
-                            junit 'jest-results/junit.xml'
-                        }
                     }
                 }
 
@@ -70,19 +63,6 @@ pipeline {
                             npx playwright test --reporter=html
                         '''
                     }
-                    post {
-                        always {
-                            publishHTML([
-                                allowMissing: false,
-                                alwaysLinkToLastBuild: false,
-                                keepAll: false,
-                                reportDir: 'playwright-report',
-                                reportFiles: 'index.html',
-                                reportName: 'Local E2E',
-                                useWrapperFileDirectly: true
-                            ])
-                        }
-                    }
                 }
             }
         }
@@ -98,15 +78,16 @@ pipeline {
                 sh '''
                     npm ci
                     npm install netlify-cli
-                    node_modules/.bin/netlify --version
 
-                    echo "Deploying to staging..."
                     node_modules/.bin/netlify deploy \
                       --dir=build \
                       --no-build \
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID \
                       --json > deploy-output.json
+
+                    echo "Deploy output:"
+                    cat deploy-output.json
                 '''
             }
             post {
@@ -129,12 +110,13 @@ pipeline {
                     npm ci
                     npx playwright install
 
-                    DEPLOY_URL=$(grep -o '"deploy_url":"[^"]*"' deploy-output.json | cut -d'"' -f4)
+                    DEPLOY_URL=$(grep -o '"deploy_url":[[:space:]]*"[^"]*"' deploy-output.json | cut -d'"' -f4)
 
-                    case "$DEPLOY_URL" in
-                      http*) ;;
-                      *) DEPLOY_URL="https://$DEPLOY_URL" ;;
-                    esac
+                    if [ -z "$DEPLOY_URL" ]; then
+                      echo "ERROR: deploy_url not found"
+                      cat deploy-output.json
+                      exit 1
+                    fi
 
                     echo "Testing against: $DEPLOY_URL"
 
@@ -142,25 +124,12 @@ pipeline {
                     npx playwright test --reporter=html
                 '''
             }
-            post {
-                always {
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        keepAll: false,
-                        reportDir: 'playwright-report',
-                        reportFiles: 'index.html',
-                        reportName: 'Staging E2E',
-                        useWrapperFileDirectly: true
-                    ])
-                }
-            }
         }
 
         stage('Approval') {
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Do you wish to deploy to production?', ok: 'Deploy'
+                    input message: 'Deploy to production?', ok: 'Deploy'
                 }
             }
         }
@@ -177,7 +146,6 @@ pipeline {
                     npm ci
                     npm install netlify-cli
 
-                    echo "Deploying to production..."
                     node_modules/.bin/netlify deploy \
                       --dir=build \
                       --prod \
@@ -203,19 +171,6 @@ pipeline {
                     npx playwright install
                     npx playwright test --reporter=html
                 '''
-            }
-            post {
-                always {
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        keepAll: false,
-                        reportDir: 'playwright-report',
-                        reportFiles: 'index.html',
-                        reportName: 'Prod E2E',
-                        useWrapperFileDirectly: true
-                    ])
-                }
             }
         }
     }
