@@ -97,6 +97,7 @@ pipeline {
                     echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
                     node_modules/.bin/netlify deploy \
                       --dir=build \
+                      --no-build \
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID \
                       --json > deploy-output.json
