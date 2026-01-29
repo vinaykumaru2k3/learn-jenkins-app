@@ -6,6 +6,7 @@ pipeline {
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
         NODE_IMAGE = 'node:18-alpine'
         PLAYWRIGHT_IMAGE = 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+        REACT_APP_VERSION = '1.2.3'
     }
 
     stages {
@@ -133,14 +134,6 @@ pipeline {
                             ])
                         }
                     }
-                }
-            }
-        }
-
-        stage('Approval') {
-            steps {
-                timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Deploy to production?', ok: 'Deploy'
                 }
             }
         }
