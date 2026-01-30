@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        NETLIFY_SITE_ID = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
+        NETLIFY_SITE_ID     = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
-        NODE_IMAGE = 'node:18-alpine'
-        PLAYWRIGHT_IMAGE = 'my-playwright'
-        REACT_APP_VERSION = "1.0.$BUILD_ID"
+        NODE_IMAGE         = 'node:18-alpine'
+        PLAYWRIGHT_IMAGE   = 'my-playwright'
+        REACT_APP_VERSION  = "1.0.$BUILD_ID"
     }
 
     stages {
@@ -57,13 +57,16 @@ pipeline {
                         unstash 'node_modules'
                         unstash 'build'
                         sh '''
+                            rm -rf playwright-report-local test-results-local
+
                             serve -s build -l 3000 &
                             sleep 10
 
                             CI_ENVIRONMENT_URL="http://localhost:3000" \
                             npx playwright test \
                               --reporter=html \
-                              --output=playwright-report-local
+                              --output=test-results-local \
+                              --reporter-options outputFolder=playwright-report-local
                         '''
                     }
                     post {
@@ -93,6 +96,8 @@ pipeline {
                 unstash 'node_modules'
                 unstash 'build'
                 sh '''
+                    rm -rf playwright-report-staging test-results-staging
+
                     echo "Deploying to staging..."
 
                     netlify deploy \
@@ -114,7 +119,8 @@ pipeline {
                     CI_ENVIRONMENT_URL="$DEPLOY_URL" \
                     npx playwright test \
                       --reporter=html \
-                      --output=playwright-report-staging
+                      --output=test-results-staging \
+                      --reporter-options outputFolder=playwright-report-staging
                 '''
             }
             post {
@@ -145,6 +151,8 @@ pipeline {
                 unstash 'node_modules'
                 unstash 'build'
                 sh '''
+                    rm -rf playwright-report-prod test-results-prod
+
                     echo "Deploying to production..."
 
                     netlify deploy \
@@ -155,7 +163,8 @@ pipeline {
 
                     npx playwright test \
                       --reporter=html \
-                      --output=playwright-report-prod
+                      --output=test-results-prod \
+                      --reporter-options outputFolder=playwright-report-prod
                 '''
             }
             post {
