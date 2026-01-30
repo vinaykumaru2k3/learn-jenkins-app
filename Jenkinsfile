@@ -77,10 +77,12 @@ pipeline {
                     post {
                         always {
                             publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: false,
+                                keepAll: true,
                                 reportDir: 'playwright-report-local',
                                 reportFiles: 'index.html',
-                                reportName: 'Local E2E',
-                                keepAll: true
+                                reportName: 'Local E2E'
                             ])
                         }
                     }
@@ -110,8 +112,9 @@ pipeline {
                     DEPLOY_URL=$(node -e "console.log(require('./deploy-output.json').deploy_url)")
 
                     if [ -z "$DEPLOY_URL" ]; then
-                      echo "Deploy URL missing"
-                      exit 1
+                        echo "ERROR: deploy_url not found"
+                        cat deploy-output.json
+                        exit 1
                     fi
 
                     echo "Testing against $DEPLOY_URL"
@@ -125,10 +128,12 @@ pipeline {
             post {
                 always {
                     publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
                         reportDir: 'playwright-report-staging',
                         reportFiles: 'index.html',
-                        reportName: 'Staging E2E',
-                        keepAll: true
+                        reportName: 'Staging E2E'
                     ])
                 }
             }
@@ -164,10 +169,12 @@ pipeline {
             post {
                 always {
                     publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
                         reportDir: 'playwright-report-prod',
                         reportFiles: 'index.html',
-                        reportName: 'Prod E2E',
-                        keepAll: true
+                        reportName: 'Prod E2E'
                     ])
                 }
             }
