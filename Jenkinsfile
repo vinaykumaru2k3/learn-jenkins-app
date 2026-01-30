@@ -62,9 +62,10 @@ pipeline {
                             serve -s build -l 3000 &
                             sleep 10
 
+                            PLAYWRIGHT_HTML_REPORT=playwright-report-local \
                             CI_ENVIRONMENT_URL="http://localhost:3000" \
                             npx playwright test \
-                              --reporter=html=playwright-report-local \
+                              --reporter=html \
                               --output=test-results-local
                         '''
                     }
@@ -97,8 +98,6 @@ pipeline {
                 sh '''
                     rm -rf playwright-report-staging test-results-staging
 
-                    echo "Deploying to staging..."
-
                     netlify deploy \
                       --dir=build \
                       --auth=$NETLIFY_AUTH_TOKEN \
@@ -109,15 +108,13 @@ pipeline {
 
                     if [ -z "$DEPLOY_URL" ]; then
                         echo "ERROR: deploy_url not found"
-                        cat deploy-output.json
                         exit 1
                     fi
 
-                    echo "Running E2E on $DEPLOY_URL"
-
+                    PLAYWRIGHT_HTML_REPORT=playwright-report-staging \
                     CI_ENVIRONMENT_URL="$DEPLOY_URL" \
                     npx playwright test \
-                      --reporter=html=playwright-report-staging \
+                      --reporter=html \
                       --output=test-results-staging
                 '''
             }
@@ -151,16 +148,15 @@ pipeline {
                 sh '''
                     rm -rf playwright-report-prod test-results-prod
 
-                    echo "Deploying to production..."
-
                     netlify deploy \
                       --dir=build \
                       --prod \
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID
 
+                    PLAYWRIGHT_HTML_REPORT=playwright-report-prod \
                     npx playwright test \
-                      --reporter=html=playwright-report-prod \
+                      --reporter=html \
                       --output=test-results-prod
                 '''
             }
