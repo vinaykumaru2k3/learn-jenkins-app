@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        NETLIFY_SITE_ID     = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
+        NETLIFY_SITE_ID = 'ca60b834-04f6-4fb5-9a4f-4bfffe4793f2'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
-        NODE_IMAGE         = 'node:18-alpine'
-        PLAYWRIGHT_IMAGE   = 'my-playwright'
-        REACT_APP_VERSION  = "1.0.$BUILD_ID"
+        NODE_IMAGE = 'node:18-alpine'
+        PLAYWRIGHT_IMAGE = 'my-playwright'
+        REACT_APP_VERSION = "1.0.$BUILD_ID"
     }
 
     stages {
@@ -64,9 +64,8 @@ pipeline {
 
                             CI_ENVIRONMENT_URL="http://localhost:3000" \
                             npx playwright test \
-                              --reporter=html \
-                              --output=test-results-local \
-                              --reporter-options outputFolder=playwright-report-local
+                              --reporter=html=playwright-report-local \
+                              --output=test-results-local
                         '''
                     }
                     post {
@@ -118,9 +117,8 @@ pipeline {
 
                     CI_ENVIRONMENT_URL="$DEPLOY_URL" \
                     npx playwright test \
-                      --reporter=html \
-                      --output=test-results-staging \
-                      --reporter-options outputFolder=playwright-report-staging
+                      --reporter=html=playwright-report-staging \
+                      --output=test-results-staging
                 '''
             }
             post {
@@ -162,9 +160,8 @@ pipeline {
                       --site=$NETLIFY_SITE_ID
 
                     npx playwright test \
-                      --reporter=html \
-                      --output=test-results-prod \
-                      --reporter-options outputFolder=playwright-report-prod
+                      --reporter=html=playwright-report-prod \
+                      --output=test-results-prod
                 '''
             }
             post {
