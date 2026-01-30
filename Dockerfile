@@ -1,2 +1,7 @@
 FROM mcr.microsoft.com/playwright:v1.39.0-jammy
-RUN npm install -g netlify-cli 
+
+WORKDIR /app
+
+RUN npm install -g netlify-cli@17
+
+RUN node --version && npm --version
