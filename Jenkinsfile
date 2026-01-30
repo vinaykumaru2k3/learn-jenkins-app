@@ -11,12 +11,6 @@ pipeline {
 
     stages {
 
-        stage('Build Playwright Image') {
-            steps {
-                sh 'docker build -t my-playwright .'
-            }
-        }
-
         stage('Install & Build') {
             agent {
                 docker {
