@@ -63,7 +63,7 @@ pipeline {
                         unstash 'node_modules'
                         unstash 'build'
                         sh '''
-                            npx serve -s build -l 3000 &
+                            serve -s build -l 3000 &
                             sleep 10
 
                             CI_ENVIRONMENT_URL="http://localhost:3000" \
