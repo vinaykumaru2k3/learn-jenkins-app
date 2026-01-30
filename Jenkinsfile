@@ -63,9 +63,7 @@ pipeline {
                         unstash 'node_modules'
                         unstash 'build'
                         sh '''
-                            npm install serve
-
-                            node_modules/.bin/serve -s build -l 3000 &
+                            npx serve -s build -l 3000 &
                             sleep 10
 
                             CI_ENVIRONMENT_URL="http://localhost:3000" \
