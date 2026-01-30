@@ -102,9 +102,9 @@ pipeline {
                 unstash 'build'
                 sh '''
                     echo "Deploying to staging..."
+
                     netlify deploy \
                       --dir=build \
-                      --no-build \
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID \
                       --json > deploy-output.json
@@ -117,7 +117,7 @@ pipeline {
                         exit 1
                     fi
 
-                    echo "Testing against $DEPLOY_URL"
+                    echo "Running E2E on $DEPLOY_URL"
 
                     CI_ENVIRONMENT_URL="$DEPLOY_URL" \
                     npx playwright test \
@@ -154,9 +154,9 @@ pipeline {
                 unstash 'build'
                 sh '''
                     echo "Deploying to production..."
+
                     netlify deploy \
                       --dir=build \
-                      --no-build \
                       --prod \
                       --auth=$NETLIFY_AUTH_TOKEN \
                       --site=$NETLIFY_SITE_ID
